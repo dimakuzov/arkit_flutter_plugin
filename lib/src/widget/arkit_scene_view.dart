@@ -68,98 +68,25 @@ class ARKitSceneView extends StatefulWidget {
     this.debug = false,
   });
 
-  /// This function will be fired when ARKit view is created.
   final ARKitPluginCreatedCallback onARKitViewCreated;
-
-  /// The configuration to use.
-  /// Defaults to World Tracking.
   final ARKitConfiguration configuration;
-
-  /// Determines whether the receiver should display statistics info like FPS.
-  /// When set to true, statistics are displayed in a overlay on top of the rendered scene.
-  /// Defaults to false.
   final bool showStatistics;
-
-  /// Specifies whether the receiver should automatically light up scenes that have no light source.
-  /// When enabled, a diffuse light is automatically added and placed while rendering scenes that have no light or only ambient lights.
-  /// The default is true.
   final bool autoenablesDefaultLighting;
-
-  /// Determines whether the receiver should recognize taps.
-  /// The default is false.
   final bool enableTapRecognizer;
-
-  /// Determines whether the receiver should recognize pinch events.
-  /// The default is false.
   final bool enablePinchRecognizer;
-
-  /// Determines whether the receiver should recognize pan events.
-  /// The default is false.
   final bool enablePanRecognizer;
-
-  /// Determines whether the receiver should recognize rotation events.
-  /// The default is false.
   final bool enableRotationRecognizer;
-
-  /// Type of planes to detect in the scene.
-  /// If set, new planes will continue to be detected and updated over time.
-  /// Detected planes will be added to the session as ARPlaneAnchor objects.
-  /// In the event that two planes are merged, the newer plane will be removed.
-  /// Defaults to ARPlaneDetection.none.
   final ARPlaneDetection planeDetection;
-
-  /// Determines how the coordinate system should be aligned with the world.
-  /// The default is ARWorldAlignment.gravity.
   final ARWorldAlignment worldAlignment;
-
-  /// Show detected 3D feature points in the world.
-  /// The default is false.
   final bool showFeaturePoints;
-
-  /// Show the world origin in the scene.
-  /// The default is false.
   final bool showWorldOrigin;
-
-  /// The mode of environment texturing to run.
-  /// If set, texture information will be accumulated and updated. Adding an AREnvironmentProbeAnchor to the session
-  /// will get the current environment texture available from that probe's perspective which can be used for lighting
-  /// virtual objects in the scene.
-  /// Defaults to ARWorldTrackingConfigurationEnvironmentTexturing.none.
-  /// Requires iOS 12 or newer
   final ARWorldTrackingConfigurationEnvironmentTexturing environmentTexturing;
-
-  /// Images to detect in the scene.
-  /// If set the session will attempt to detect the specified images.
-  /// When an image is detected an ARImageAnchor will be added to the session.
   final String? detectionImagesGroupName;
-
-  /// Images to detect in the scene.
-  /// If set the session will attempt to detect the specified images (bundle name or url)
-  /// When an image is detected an ARImageAnchor will be added to the session.
   final List<ARKitReferenceImage>? detectionImages;
-
-  /// Images to detect in the scene.
-  /// If set the session will attempt to detect the specified images.
-  /// When an image is detected an ARImageAnchor will be added to the session.
   final String? trackingImagesGroupName;
-
-  /// Images to detect in the scene.
-  /// If set the session will attempt to detect the specified images.
-  /// When an image is detected an ARImageAnchor will be added to the session.
   final List<ARKitReferenceImage>? trackingImages;
-
-  /// When set every user tap will be processed like user tapped on the center of the screen.
-  /// The default is false.
   final bool forceUserTapOnCenter;
-
-  /// Maximum number of images to track simultaneously.
-  /// Setting the maximum number of tracked images will limit the number of images that can be tracked in a given frame.
-  /// If more than the maximum is visible, only the images already being tracked will continue to track until tracking is lost or another image is removed.
-  /// The default is 0
   final int maximumNumberOfTrackedImages;
-
-  /// When true prints all communication between the plugin and the framework.
-  /// The default is false;
   final bool debug;
 
   @override
@@ -177,6 +104,7 @@ class _ARKitSceneViewState extends State<ARKitSceneView> {
 
   @override
   Widget build(BuildContext context) {
+  print('Building ARKitSceneView with config: ${widget.configuration}');
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
         viewType: 'arkit',
@@ -189,6 +117,7 @@ class _ARKitSceneViewState extends State<ARKitSceneView> {
   }
 
   Future<void> onPlatformViewCreated(int id) async {
+    print('onPlatformViewCreated called with id: $id'); // Лог: Проверка, вызывается ли метод инициализации платформенного представления
     _controller = ARKitController._init(
       id,
       widget.configuration,
@@ -212,13 +141,11 @@ class _ARKitSceneViewState extends State<ARKitSceneView> {
       widget.debug,
       widget.onARKitViewCreated,
     );
+    print('ARKitController initialized with id: $id'); // Лог: Проверка, создался ли ARKitController после invokeMethod('init')
   }
 }
 
 /// Controls an [ARKitSceneView].
-///
-/// An [ARKitController] instance can be obtained by setting the [ARKitSceneView.onARKitViewCreated]
-/// callback for an [ARKitSceneView] widget.
 class ARKitController {
   ARKitController._init(
     int id,
@@ -243,8 +170,10 @@ class ARKitController {
     this.debug,
     this.onARKitViewCreated,
   ) {
+    print('ARKitController._init started with id: $id'); // Лог: Проверка начала инициализации ARKitController
     _channel = MethodChannel('arkit_$id');
     _channel.setMethodCallHandler(_platformCallHandler);
+    print('Channel created and handler set for id: $id'); // Лог: Проверка создания MethodChannel
     _channel.invokeMethod<void>('init', {
       'configuration': configuration.index,
       'environmentTexturing': environmentTexturing.index,
@@ -265,57 +194,26 @@ class ARKitController {
       'worldAlignment': worldAlignment.index,
       'maximumNumberOfTrackedImages': maximumNumberOfTrackedImages,
     });
+    print('invokeMethod("init") completed for id: $id'); // Лог: Проверка завершения invokeMethod('init')
   }
 
   late MethodChannel _channel;
-
-  /// This is called when a session fails.
-  /// On failure the session will be paused.
   StringResultHandler? onError;
-
-  /// This is called when a session is interrupted.
-  /// A session will be interrupted and no longer able to track when
-  /// it fails to receive required sensor data. This happens when video capture is interrupted,
-  /// for example when the application is sent to the background or when there are
-  /// multiple foreground applications (see AVCaptureSessionInterruptionReason).
-  /// No additional frame updates will be delivered until the interruption has ended.
   VoidCallback? onSessionWasInterrupted;
-
-  /// This is called when a session interruption has ended.
-  /// A session will continue running from the last known state once
-  /// the interruption has ended. If the device has moved, anchors will be misaligned.
   VoidCallback? onSessionInterruptionEnded;
-
   ARKitTapResultHandler? onNodeTap;
   ARKitHitResultHandler? onARTap;
   ARKitPinchGestureHandler? onNodePinch;
   ARKitPanResultHandler? onNodePan;
   ARKitRotationResultHandler? onNodeRotation;
-
-  /// Called when a new node has been mapped to the given anchor.
   AnchorEventHandler? onAddNodeForAnchor;
-
-  /// Called when a node will be updated with data from the given anchor.
   AnchorEventHandler? onUpdateNodeForAnchor;
-
-  /// Called when a mapped node has been removed from the scene graph for the given anchor.
   AnchorEventHandler? onDidRemoveNodeForAnchor;
-
-  /// Called once per frame
   Function(double time)? updateAtTime;
-
-  /// Called when camera tracking state is changed;
   Function(ARTrackingState trackingState, ARTrackingStateReason? reason)?
       onCameraDidChangeTrackingState;
-
-  /// This is called when the view deactivates, either manually or automatically
-  /// Set this function to do any custom actions your app requires to begin
-  /// the AR experience.
-  /// For example, when coaching is deactivated, your app might restore custom UI.
   VoidCallback? coachingOverlayViewDidDeactivate;
-
   final ARKitPluginCreatedCallback onARKitViewCreated;
-
   final bool debug;
   bool _wasDisposed = false;
 
@@ -328,6 +226,43 @@ class ARKitController {
   static const _materialsConverter = ListMaterialsValueNotifierConverter();
   static const _stateConverter = ARTrackingStateConverter();
   static const _stateReasonConverter = ARTrackingStateReasonConverter();
+
+  Future<void> initCustomConfiguration() async {
+    try {
+      await _channel.invokeMethod('initCustomConfiguration');
+    } catch (e) {
+      print('Error initializing custom configuration: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> snapshotWithDepthData() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('snapshotWithDepthData');
+      if (result == null) {
+        return null;
+      }
+      return {
+        'depthMap': result['depthMap'] as List<dynamic>?,
+        'confidenceMap': result['confidenceMap'] as List<dynamic>?,
+        'depthWidth': result['depthWidth'] as int?,
+        'depthHeight': result['depthHeight'] as int?,
+        'transform': result['transform'] as List<dynamic>?
+      };
+    } catch (e) {
+      print('Error capturing snapshot with depth data: $e');
+      return null;
+    }
+  }
+
+  Future<Uint8List?> captureHighResImage() async {
+    try {
+      final result = await _channel.invokeMethod('captureHighResImage');
+      return result as Uint8List?;
+    } catch (e) {
+      print('Error capturing high res image: $e');
+      return null;
+    }
+  }
 
   void dispose() {
     if (_wasDisposed) {
@@ -367,9 +302,6 @@ class ARKitController {
         'removeARKitAnchor', {'anchorIdentifier': anchorIdentifier});
   }
 
-  /// Perform Hit Test
-  /// defaults to center of the screen.
-  /// x and y values are between 0 and 1
   Future<List<ARKitTestResult>> performHitTest(
       {required double x, required double y}) async {
     assert(x > 0 && y > 0);
@@ -384,7 +316,6 @@ class ARKitController {
     }
   }
 
-  /// Return list of 2 Vector3 elements, where first element - min value, last element - max value.
   Future<List<Vector3>> getNodeBoundingBox(ARKitNode node) async {
     final params = _addParentNodeNameToParams(node.toMap(), null);
     final result =
@@ -402,7 +333,6 @@ class ARKitController {
         : null;
   }
 
-  /// Updates the geometry with the vertices of a face geometry.
   void updateFaceGeometry(ARKitNode node, String fromAnchorId) {
     _channel.invokeMethod<void>(
         'updateFaceGeometry',
@@ -426,7 +356,6 @@ class ARKitController {
         : null;
   }
 
-  /// Provides the point of view transform in world space (relative to the scene's root node)
   Future<Matrix4?> pointOfViewTransform() async {
     final pointOfViewTransform =
         await _channel.invokeListMethod<double>('pointOfViewTransform');
@@ -454,9 +383,6 @@ class ARKitController {
     });
   }
 
-  /// A view that displays standardized onboarding instructions to direct users toward a specific goal.
-  /// The view will use context aware messaging and animations to instruct the user on gathering required info for the AR session.
-  /// Requires iOS 13 and above.
   Future<void> addCoachingOverlay(CoachingOverlayGoal goal) =>
       _channel.invokeMethod('addCoachingOverlay', {
         'goal': goal.index,
@@ -464,6 +390,43 @@ class ARKitController {
 
   Future<void> removeCoachingOverlay() =>
       _channel.invokeMethod('removeCoachingOverlay');
+
+  Future<Vector3> getCameraEulerAngles() async {
+    final result = await _channel.invokeListMethod('cameraEulerAngles');
+    final vector3 = _vector3Converter.fromJson(result!);
+    return vector3;
+  }
+
+  Future<Size> getCameraImageResolution() async {
+    final result = await _channel.invokeListMethod('cameraImageResolution');
+    final vector2 = _vector2Converter.fromJson(result!);
+    return Size(vector2.x, vector2.y);
+  }
+
+  Future<Matrix3> getCameraIntrinsics() async {
+    final result = await _channel.invokeListMethod('cameraIntrinsics');
+    final matrix3 = _matrix3Converter.fromJson(result!);
+    return matrix3;
+  }
+
+  Future<ImageProvider> snapshot() async {
+    final result = await _channel.invokeMethod<Uint8List>('snapshot');
+    return MemoryImage(result!);
+  }
+
+  Future<ImageProvider> getCapturedImage() async {
+    final result = await _channel.invokeMethod<Uint8List>('capturedImage');
+    return MemoryImage(result!);
+  }
+
+  Future<Vector3?> cameraPosition() async {
+    final result = await _channel.invokeListMethod('cameraPosition');
+    if (result != null) {
+      return _vector3Converter.fromJson(result);
+    } else {
+      return null;
+    }
+  }
 
   Map<String, dynamic> _addParentNodeNameToParams(
       Map geometryMap, String? parentNodeName) {
@@ -574,7 +537,7 @@ class ARKitController {
           break;
         default:
           if (debug) {
-            debugPrint('Unknowm method ${call.method} ');
+            debugPrint('Unknown method ${call.method} ');
           }
       }
     } catch (e) {
@@ -591,34 +554,34 @@ class ARKitController {
     if (node.geometry != null) {
       node.geometry!.materials.addListener(() => _updateMaterials(node));
       switch (node.geometry.runtimeType) {
-        case ARKitPlane _:
+        case ARKitPlane:
           _subscribeToPlaneGeometry(node);
           break;
-        case ARKitSphere _:
+        case ARKitSphere:
           _subscribeToSphereGeometry(node);
           break;
-        case ARKitText _:
+        case ARKitText:
           _subscribeToTextGeometry(node);
           break;
-        case ARKitBox _:
+        case ARKitBox:
           _subscribeToBoxGeometry(node);
           break;
-        case ARKitCylinder _:
+        case ARKitCylinder:
           _subscribeToCylinderGeometry(node);
           break;
-        case ARKitCone _:
+        case ARKitCone:
           _subscribeToConeGeometry(node);
           break;
-        case ARKitPyramid _:
+        case ARKitPyramid:
           _subscribeToPyramidGeometry(node);
           break;
-        case ARKitTube _:
+        case ARKitTube:
           _subscribeToTubeGeometry(node);
           break;
-        case ARKitTorus _:
+        case ARKitTorus:
           _subscribeToTorusGeometry(node);
           break;
-        case ARKitCapsule _:
+        case ARKitCapsule:
           _subscribeToCapsuleGeometry(node);
           break;
       }
@@ -749,64 +712,5 @@ class ARKitController {
     final values = <String, dynamic>{'name': node.name}
       ..addAll({paramName: params});
     return values;
-  }
-
-  Future<Vector3> getCameraEulerAngles() async {
-    final result = await _channel.invokeListMethod('cameraEulerAngles');
-    final vector3 = _vector3Converter.fromJson(result!);
-    return vector3;
-  }
-
-  Future<Size> getCameraImageResolution() async {
-    final result = await _channel.invokeListMethod('cameraImageResolution');
-    final vector2 = _vector2Converter.fromJson(result!);
-    return Size(vector2.x, vector2.y);
-  }
-
-  Future<Matrix3> getCameraIntrinsics() async {
-    final result = await _channel.invokeListMethod('cameraIntrinsics');
-    final matrix3 = _matrix3Converter.fromJson(result!);
-    return matrix3;
-  }
-
-  Future<ImageProvider> snapshot() async {
-    final result = await _channel.invokeMethod<Uint8List>('snapshot');
-    return MemoryImage(result!);
-  }
-
-  Future<ImageProvider> getCapturedImage() async {
-    final result = await _channel.invokeMethod<Uint8List>('capturedImage');
-    return MemoryImage(result!);
-  }
-
-  Future<Map<String, Object>?> snapshotWithDepthData() async {
-    final result = await _channel
-        .invokeMethod<Map<Object?, Object?>>('snapshotWithDepthData');
-    if (result != null) {
-      result.removeWhere((key, value) => key == null || value == null);
-      return result.cast<Object, Object>().map((key, value) {
-        final parsedKey = key as String;
-
-        if (parsedKey == 'image') {
-          final bytesList = (value as List<Object?>).cast<int>().toList();
-          final bytes = Uint8List.fromList(bytesList);
-          final image = MemoryImage(bytes);
-          return MapEntry(parsedKey, image);
-        } else {
-          return MapEntry(parsedKey, value);
-        }
-      });
-    } else {
-      return null;
-    }
-  }
-
-  Future<Vector3?> cameraPosition() async {
-    final result = await _channel.invokeListMethod('cameraPosition');
-    if (result != null) {
-      return _vector3Converter.fromJson(result);
-    } else {
-      return null;
-    }
   }
 }
