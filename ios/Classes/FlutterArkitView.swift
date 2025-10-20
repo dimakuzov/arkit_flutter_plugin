@@ -19,12 +19,29 @@ class FlutterArkitView: NSObject, FlutterPlatformView, ARSCNViewDelegate {
     func view() -> UIView { return sceneView }
 
     func configureSession(_ arguments: [String: Any]?) {
+        print("configureSession called with arguments: \(String(describing: arguments))")
+        do {
         let config = ARWorldTrackingConfiguration()
         if #available(iOS 14.0, *) {
-            config.frameSemantics.insert(.sceneDepth)
+            if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+                config.frameSemantics.insert(.sceneDepth)
+                print("sceneDepth enabled: \(config.frameSemantics.contains(.sceneDepth))")
+            }
         }
-        sceneView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
+        // Установить формат видео с высоким разрешением
+        if #available(iOS 11.3, *) {
+            if let videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.max(by: { $0.imageResolution.width < $1.imageResolution.width }) {
+                config.videoFormat = videoFormat
+                print("Video format set to: \(videoFormat.imageResolution.width)x\(videoFormat.imageResolution.height)")
+            }
+        }
+        try sceneView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
         configuration = config
+        print("configureSession completed")
+        } catch {
+            print("configureSession failed: \(error)")
+            logPluginError("Failed to configure AR session: \(error)", toChannel: channel)
+        }
     }
 
     @available(iOS 14.0, *)
