@@ -175,13 +175,21 @@ class FlutterArkitView: NSObject, FlutterPlatformView, ARSCNViewDelegate {
                 return
             }
             let image = currentFrame.capturedImage
-            guard let imageData = CIImage(cvPixelBuffer: image).jpegRepresentation() else {
-                print("Failed to convert image to JPEG")
+            let ciImage = CIImage(cvPixelBuffer: image)
+            let context = CIContext(options: nil)
+            if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+                let uiImage = UIImage(cgImage: cgImage)
+                if let data = uiImage.jpegData(compressionQuality: 0.9) { // Изменено на JPEG с 90% качеством
+                    print("High res image captured, size: \(data.count) bytes")
+                    result(data)
+                } else {
+                    print("Failed to convert image to JPEG")
+                    result(nil)
+                }
+            } else {
+                print("Failed to convert CIImage to CGImage")
                 result(nil)
-                return
             }
-            print("High res image captured, size: \(imageData.count) bytes")
-            result(imageData)
         case "cameraImageResolution":
             print("Getting camera image resolution")
             guard let currentFrame = sceneView.session.currentFrame else {
